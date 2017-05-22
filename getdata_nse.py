@@ -6,12 +6,12 @@ import requests
 import re
 
 class Nse:
-   def __init__(self, url):
+   def __init__(self, url=None, params=None, headers=None):
       self.url = url
-      self.response = requests.get(url)
+      self.response = requests.get(url, params=params, headers=headers)
 
-   def get_response_object(self, url):
-      return requests.get(url)
+   def get_response_object(self, url=None, params=None):
+      return requests.get(url, params=params)
 
    def get_response_text(self):
       return self.response.text
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     if not os.path.isfile("sec_bhavdata_full.csv"):
         # Then, get the sec_bhavdata_full.csv, which contains
         # all details of all the scrips
-        all_scrips = Nse("https://www.nseindia.com/products/content/sec_bhavdata_full.csv")
+        all_scrips = Nse(url="https://www.nseindia.com/products/content/sec_bhavdata_full.csv")
         with open("sec_bhavdata_full.csv", "w") as fh:
             fh.write(all_scrips.get_response_text())
 
@@ -44,25 +44,29 @@ if __name__ == "__main__":
             if scrip == "SYMBOL":
                 continue
             print "working on %s" %scrip
-            baseurl = "https://www.nseindia.com/products/dynaContent/common/productsSymbolMapping.jsp?"
+            url_symbol_count = "https://www.nseindia.com/marketinfo/sym_map/symbolCount.jsp"
+            payload = {"symbol": scrip }
+            obj = Nse(url=url_symbol_count, params=payload)
+            symbol_count = obj.get_response_text().strip()
+
+            baseurl = "https://www.nseindia.com/products/dynaContent/common/productsSymbolMapping.jsp"
 
             scrip_csv = ("%s%s%s.csv" %(dir_for_csv, os.path.sep, scrip))
 
+            get_params = {'symbol': scrip, 'segmentLink': 3,
+                          'series': 'ALL', 'fromDate': "", 'toDate': "",
+                          'dataType': 'PRICEVOLUMEDELIVERABLE', "symbolCount": str(symbol_count)}
+
             if os.path.isfile(scrip_csv):
-                get_params = ['symbol=%s' % scrip, 'segmentLink=3',
-                              'series=ALL', 'dateRange=day', 'fromDate=', 'toDate=',
-                              'dataType=PRICEVOLUMEDELIVERABLE']
+                get_params['dateRange'] = 'day'
             else:
-                get_params = ['symbol=%s' % scrip, 'segmentLink=3',
-                              'series=ALL', 'dateRange=3month', 'fromDate=', 'toDate=',
-                              'dataType=PRICEVOLUMEDELIVERABLE']
+                get_params['dateRange'] = '3month'
 
             # Url to hit:
             # https://www.nseindia.com/products/dynaContent/common/productsSymbolMapping.jsp?symbol=sbin&segmentLink=3&symbolCount=1&series=ALL&dateRange=12month&fromDate=&toDate=&dataType=PRICEVOLUMEDELIVERABLE
 
             try:
-                url = baseurl + "&".join(get_params)
-                nse_obj = Nse(url)
+                nse_obj = Nse(url=baseurl, params=get_params, headers={'Referer': 'https://www.nseindia.com/products/content/equities/equities/eq_security.htm'})
                 response_text = nse_obj.get_response_text()
                 regex = re.compile(r'csvContentDiv.*\>(.*)\</div\>', re.MULTILINE)
                 csv_data = regex.findall(response_text)
@@ -78,7 +82,7 @@ if __name__ == "__main__":
                         csvfile.write(csv_data[0].replace(":", "\n"))
 
                 print "==========="
-                print url
+             
             except Exception as e:
                 print "Failure for %s" %scrip
                 print e.message
