@@ -122,8 +122,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if not args.daily_data or args.bootstrap:
+    if not args.daily_data and not args.bootstrap:
         parser.print_help()
+        sys.exit(0)
 
     """
     'symbol=EICHERMOT&segmentLink=3&symbolCount=1&series=ALL&dateRange=+&fromDate=01-01-2009&toDate=31-12-2009&dataType=PRICEVOLUMEDELIVERABLE'
@@ -146,7 +147,8 @@ if __name__ == "__main__":
                     continue
                 scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, scrip))
                 Nse.bootstrap_history({"start": args.year_start, "end": args.year_end}, scrip, scrip_csv)
-    elif args.daily_data:
+
+    if args.daily_data:
         print "Fetching daily data.."
         with open(all_scrips_csv, "r") as all_scrips:
             for line in all_scrips:
@@ -168,3 +170,4 @@ if __name__ == "__main__":
                     update_csv(scrip_csv, csv_data)
                 except Exception as e:
                     print "Failed to fetch daily data for %s: %s" %(scrip, e.message)
+

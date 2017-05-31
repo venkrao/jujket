@@ -9,6 +9,7 @@ import pandas as pd
 import sys, os, glob
 import datetime
 import argparse
+import argparse
 
 def price_increased(dataframe, percentage_change, output_csv, change_type):
     pass
@@ -61,36 +62,47 @@ def penny_stocks(value):
                 # print scrip_dataframe["Series"].loc("EQ")
 
                 # print scrip_dataframe.query(scrip_dataframe.Series == "EQ")
-                price_now = scrip_dataframe["Close Price"][59]
+                price_now = scrip_dataframe["Close Price"].iloc[-1]
 
                 if price_now < value:
-                    pct_change = get_pct_change(scrip_dataframe)
-                    print "Penny stock: %s pct_change: %s"  %(scrip_csv, pct_change)
-                    fh_penny_csv.write("%s, %s, %s\n" %(scrip_csv.split("/")[1].split(".")[0], price_now, pct_change))
+                    print "Penny stock: %s"  %(scrip_csv)
+                    fh_penny_csv.write("%s, %s\n" %(scrip_csv.split("/")[1].split(".")[0], price_now))
                     print "================="
             except Exception as e:
                 print "%s is broken: %s" % (scrip_csv, e.message)
 
-    print "Stocks whose price as on today is less than: %s: %s" %(price_now, penny_csv)
+    print "List of stocks whose price as on today is less than: %s: %s" %(value, penny_csv)
 
 if __name__ == "__main__":
     if not os.path.isdir("result_csv"):
         my_mkdir("result_csv")
 
-    print "Options: \n" \
-          "1 : get stocks with price < given value. you will be asked for price.\n" \
-          "2: price_decreased by percentage. \n" \
-          ""
+    parser = argparse.ArgumentParser(description='Run analysis on various scrips.')
+    parser.add_argument('--penny_stocks', action="store_true", help="Collect stocks with nomnal price")
+    parser.add_argument('--penny_stock_price', dest="penny_stock_price", help="Price which to you is penny")
 
-    option = int(raw_input("Choose a number from above:"))
-    if option == 1 :
-        value = int(raw_input("Enter the price: "))
-        penny_stocks(value)
-    if option == 2:
-        value = raw_input("Price decreased by percentage: ")
-        output_csv = "decreasedby_-%s_pct_as_on_%s.csv" %(value, datetime.datetime.today().strftime('%m-%d-%Y'))
+    parser.add_argument('--price_decreased_by', action="decreased_by", help="Collect stocks whose price decreased by"
+                                                                            "the given value")
+    parser.add_argument('--duration', action="duration", help="duration since today to refer to calculate the "
+                                                                            "price decrease by given value",
+                        default="22") # Default is 22 days. ie one month.
+
+    args = parser.parse_args()
+    if not args.penny_stocks and not args.price_decreased_by:
+        parser.print_help()
+        sys.exit(0)
+
+    if args.penny_stocks:
+        if not args.penny_stock_price:
+            print "--penny_stock_price required."
+            sys.exit()
+        penny_stocks(args.penny_stock_price)
+
+    if args.price_decreased_by:
+        output_csv = "decreasedby_-%s_pct_as_on_%s.csv" %(args.price_decreased_by,
+                                                          datetime.datetime.today().strftime('%m-%d-%Y'))
         for scrip_csv in glob.glob("csvfiles/*.csv*"):
-            price_decreased(scrip_csv=scrip_csv, by="-%s" %value, output_csv=output_csv)
+            price_decreased(scrip_csv=scrip_csv, by="-%s" %args.price_decreased_by, output_csv=output_csv)
 
-        print "Reports of stocks whose price decreased: %s" %output_csv
+        print "Reports of stocks whose price decreased by %s: %s" %(output_csv, args.price_decreased_by)
 
