@@ -15,22 +15,31 @@ def price_increased(dataframe, percentage_change, output_csv, change_type):
     pass
 
 
-def price_decreased(scrip_csv=None, by=None, output_csv=None):
+def price_change_metrics(scrip_csv=None, by=None, change_type=None, duration=None, output_csv=None):
     print output_csv
 
     with open(output_csv, "a") as watchout:
         try:
             scrip_dataframe = pd.read_csv(scrip_csv)
             # print scrip_dataframe["Series"].loc("EQ")
-
+            duration = int(duration)
+            scrip_dataframe_for_duration = scrip_dataframe.iloc[-duration:]
             #print scrip_dataframe.query(scrip_dataframe.Series == "EQ")
 
-            pct_change = get_pct_change(scrip_dataframe)
-            if  pct_change < int(by):
-                print "%s : WATCH OUT" % scrip_csv
-                watchout.write("%s, %s\n" %(scrip_csv.split("/")[1].split(".")[0], pct_change))
-            else:
-                print "%s hasn't changed to less than %s" %(scrip_csv, by)
+            pct_change = get_pct_change(scrip_dataframe_for_duration)
+            if change_type == "decreased":
+                if  pct_change < -int(by):
+                    print "%s : WATCH OUT" % scrip_csv
+                    watchout.write("%s, %s\n" %(scrip_csv.split("/")[1].split(".")[0], pct_change))
+                else:
+                    print "%s hasn't changed to less than %s" %(scrip_csv, by)
+
+            if change_type == "increased":
+                if pct_change > int(by):
+                    print "%s : WATCH OUT" % scrip_csv
+                    watchout.write("%s, %s\n" % (scrip_csv.split("/")[1].split(".")[0], pct_change))
+                else:
+                    print "%s hasn't changed to less than %s" % (scrip_csv, by)
             print "================="
         except Exception as e:
             print "%s is broken: %s" %(scrip_csv, e.message)
@@ -81,14 +90,17 @@ if __name__ == "__main__":
     parser.add_argument('--penny_stocks', action="store_true", help="Collect stocks with nomnal price")
     parser.add_argument('--penny_stock_price', dest="penny_stock_price", help="Price which to you is penny")
 
-    parser.add_argument('--price_decreased_by', action="decreased_by", help="Collect stocks whose price decreased by"
+    parser.add_argument('--price_decreased_by', dest="price_decreased_by", help="Collect stocks whose price decreased by"
                                                                             "the given value")
-    parser.add_argument('--duration', action="duration", help="duration since today to refer to calculate the "
+    parser.add_argument('--price_increased_by', dest="price_increased_by",
+                        help="Collect stocks whose price increased by"
+                             "the given value")
+    parser.add_argument('--duration', dest="duration", help="duration since today to refer to calculate the "
                                                                             "price decrease by given value",
                         default="22") # Default is 22 days. ie one month.
 
     args = parser.parse_args()
-    if not args.penny_stocks and not args.price_decreased_by:
+    if not args.penny_stocks and not args.price_decreased_by and not args.price_increased_by:
         parser.print_help()
         sys.exit(0)
 
@@ -99,10 +111,28 @@ if __name__ == "__main__":
         penny_stocks(args.penny_stock_price)
 
     if args.price_decreased_by:
-        output_csv = "decreasedby_-%s_pct_as_on_%s.csv" %(args.price_decreased_by,
-                                                          datetime.datetime.today().strftime('%m-%d-%Y'))
+        output_csv = "decreasedby_%s_pct_as_on_%s.csv" %(args.price_decreased_by,
+
+                                                       datetime.datetime.today().strftime('%m-%d-%Y'))
+        if os.path.isfile(output_csv):
+            os.remove(output_csv)
+
         for scrip_csv in glob.glob("csvfiles/*.csv*"):
-            price_decreased(scrip_csv=scrip_csv, by="-%s" %args.price_decreased_by, output_csv=output_csv)
+            price_change_metrics(scrip_csv=scrip_csv, by="%s" %args.price_decreased_by, duration=args.duration,
+                            output_csv=output_csv, change_type="decreased")
 
-        print "Reports of stocks whose price decreased by %s: %s" %(output_csv, args.price_decreased_by)
+        print "List of companies whose stock price fell by %s: %s" %(output_csv, args.price_decreased_by)
 
+
+    if args.price_increased_by:
+        output_csv = "increasedby_%s_pct_as_on_%s.csv" %(args.price_increased_by,
+
+                                                       datetime.datetime.today().strftime('%m-%d-%Y'))
+        if os.path.isfile(output_csv):
+            os.remove(output_csv)
+
+        for scrip_csv in glob.glob("csvfiles/*.csv*"):
+            price_change_metrics(scrip_csv=scrip_csv, by="%s" %args.price_increased_by, duration=args.duration,
+                            output_csv=output_csv, change_type="increased")
+
+        print "List of companies whose stock price increased by %s: %s" %(output_csv, args.price_increased_by)
