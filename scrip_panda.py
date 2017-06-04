@@ -48,7 +48,7 @@ def get_pct_change(scrip_dataframe):
     avg_change = scrip_dataframe.groupby("Series")["Close Price"].apply(lambda x: x.div(x.iloc[0]).subtract(1).mul(100))
 
     # .get_group("EQ").
-    scrip_dataframe.loc[:, ('avg_change')] = avg_change
+    scrip_dataframe = scrip_dataframe.assign(avg_change = avg_change)
     pct_change = \
     scrip_dataframe[["Date", "Series", "avg_change", "Close Price"]].loc[scrip_dataframe['Series'] == "EQ"][
         "avg_change"][scrip_dataframe.index[-1]]
