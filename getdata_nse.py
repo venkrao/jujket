@@ -60,7 +60,7 @@ class Nse:
         return all_scrips_csv
 
     @staticmethod
-    def bootstrap_history(history_range, scrip, scrip_csv):
+    def bootstrap_history(history_range=None, scrip=None, scrip_csv=None):
         overview = "overview.csv"
         trade_debut = False
         print "Bootstrap: working on %s" % scrip
@@ -70,7 +70,7 @@ class Nse:
         for year in range(history_range["start"], history_range["end"] + 1):
             print "Year: %s" %year
             get_params = {'symbol': scrip, 'segmentLink': 3,
-                          'series': 'ALL', 'fromDate': "01-01-%s" %year,
+                          'series': 'EQ', 'fromDate': "01-01-%s" %year,
                           'toDate': "31-12-%s" %year,
                           'dataType': 'PRICEVOLUMEDELIVERABLE', "symbolCount": symbol_count,
                           "dateRange": "+"}
@@ -96,12 +96,16 @@ def my_mkdir(path):
     return os.path.abspath(path)
 
 def update_csv(scrip_csv, csv_data):
+    write_header = False
+    if not os.path.isfile(scrip_csv):
+        write_header = True
+
     with open(scrip_csv, "a") as csvfile:
         if os.path.isfile(scrip_csv):
             # If the file exists, ignore the first row.
             # which is just the table header
             for r in csv_data[0].replace(":", "\n").split("\n"):
-                if "Average Price" in r:
+                if "Average Price" in r and not write_header:
                     continue
                 csvfile.write(r + "\n")
         else:
@@ -120,6 +124,10 @@ if __name__ == "__main__":
     parser.add_argument('--year_end', dest='year_end', action="store", default=datetime.datetime.now().year,
                         help="Bootstraps stocks data until this year. Default, current year.")
 
+    parser.add_argument("--scrip", dest="scrip", required=False, default=None,
+                        help="Limit whatever the action to just this scrip")
+
+
     args = parser.parse_args()
 
     if not args.daily_data and not args.bootstrap:
@@ -132,21 +140,37 @@ if __name__ == "__main__":
     """
     if args.bootstrap:
         # If we are bootstrapping, then, we fetch the data from nse for the previous
-        # 10 years. i.e since 2007.
+        # 10 years. i.e since 2007. Remember 2008 and 2009?
+
         # I hope I'm not going to be prevented from doing so.
 
         # And record the trading since year for each scrip.
-        if os.path.isfile("overview.csv"):
-            os.remove("overview.csv")
+        if args.scrip:
+            overview = "overview_%s.csv" %(args.scrip)
+        else:
+            overview = "overview_all.csv"
 
-        with open(all_scrips_csv, "r") as all_scrips:
-            for line in all_scrips:
-                scrip = line.split(",")[0]
+        if os.path.isfile(overview):
+            os.remove(overview)
 
-                if scrip == "SYMBOL":
-                    continue
-                scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, scrip))
-                Nse.bootstrap_history({"start": args.year_start, "end": args.year_end}, scrip, scrip_csv)
+        if args.scrip:
+            print "Historic data only for %s" %args.scrip
+            # just the one specified on the commandline.
+            scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, args.scrip))
+            Nse.bootstrap_history(history_range={"start": args.year_start, "end": args.year_end},
+                                  scrip=args.scrip, scrip_csv=scrip_csv)
+        else:
+            # all the scrips
+            print "Historic data only for ALL scrips"
+            with open(all_scrips_csv, "r") as all_scrips:
+                for line in all_scrips:
+                    scrip = line.split(",")[0]
+
+                    if scrip == "SYMBOL":
+                        continue
+                    scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, scrip))
+                    Nse.bootstrap_history(history_range={"start": args.year_start, "end": args.year_end},
+                                          scrip=scrip, scrip_csv=scrip_csv)
 
     if args.daily_data:
         print "Fetching daily data.."
@@ -154,7 +178,7 @@ if __name__ == "__main__":
             for line in all_scrips:
                 scrip = line.split(",")[0]
 
-                if scrip == "SYMBOL":
+                if scrip == "SYMoOL":
                     continue
 
                 print "working on %s" % scrip
@@ -162,7 +186,7 @@ if __name__ == "__main__":
                 symbol_count = str(Nse.get_symbol_count(scrip))
 
                 get_params = {'symbol': scrip, 'segmentLink': 3,
-                              'series': 'ALL', 'fromDate': "", 'toDate': "",
+                              'series': 'EQ', 'fromDate': "", 'toDate': "",
                               'dataType': 'PRICEVOLUMEDELIVERABLE', "symbolCount": symbol_count,
                               'dateRange': "day"}
                 try :
