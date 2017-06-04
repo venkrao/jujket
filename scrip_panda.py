@@ -50,9 +50,7 @@ def get_pct_change(scrip_dataframe):
     # .get_group("EQ").
     scrip_dataframe = scrip_dataframe.assign(avg_change = avg_change)
     pct_change = \
-    scrip_dataframe[["Date", "Series", "avg_change", "Close Price"]].loc[scrip_dataframe['Series'] == "EQ"][
-        "avg_change"][scrip_dataframe.index[-1]]
-
+    scrip_dataframe[["Date", "Series", "avg_change", "Close Price"]]["avg_change"][scrip_dataframe.index[-1]]
     return pct_change
 
 def my_mkdir(path):
@@ -93,6 +91,14 @@ def subset_dataframe_pattern(input_dataframe=None, pattern=None):
     return df, True
 
 def yoy_metrics(scrip_csv=None, output_csv=None):
+    # Along with the yoy price change, I need a ratio/percentage of
+    # times during which the price increased.
+    # i.e during a 10 year period, if the price has increased 6 times,
+    # then, the increase_decrease_pct value will be: 60%
+
+    count_increased = 0
+    count_total = 0
+
     input_dataframe = pd.read_csv(scrip_csv)
 
     scrip = scrip_csv.replace("csvfiles/", "").replace(".csv", "")
@@ -112,10 +118,19 @@ def yoy_metrics(scrip_csv=None, output_csv=None):
                 # alles gut. write pct change into the csv.
                 fh_output_csv.write("%s," %yoy_pct_change)
                 print "%s: total traded days in year %s: %s" %(scrip, year, len(subset_dataframe))
+                count_total += 1
+                if yoy_pct_change > 0:
+                    count_increased += 1
             else:
                 print "%s: total traded days in year: %s 0" % (scrip, year)
                 fh_output_csv.write("WAS_NOT_TRADING,")
+        increase_decrease_pct = 0
+        # write the increase_decrease_pct now.
+        if count_increased > 0:
+            increase_decrease_pct = 100 * (float(count_increased)/float(count_total))
 
+        print increase_decrease_pct
+        fh_output_csv.write("%s," %increase_decrease_pct)
         fh_output_csv.write("\n")
 
 if __name__ == "__main__":
@@ -202,6 +217,7 @@ if __name__ == "__main__":
             for year in range(2007, datetime.datetime.now().year + 1):
                 fh.write("%s," %year)
 
+            fh.write("increase_decrease_pct")
             fh.write("\n")
 
         if args.scrip:
