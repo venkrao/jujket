@@ -16,7 +16,6 @@ def price_increased(dataframe, percentage_change, output_csv, change_type):
 
 
 def price_change_metrics(scrip_csv=None, by=None, change_type=None, duration=None, output_csv=None):
-    print output_csv
 
     with open(output_csv, "a") as watchout:
         try:
@@ -99,7 +98,11 @@ def yoy_metrics(scrip_csv=None, output_csv=None):
     count_increased = 0
     count_total = 0
 
-    input_dataframe = pd.read_csv(scrip_csv)
+    try:
+        input_dataframe = pd.read_csv(scrip_csv)
+    except Exception as e:
+        print "Failed to read csv file %s: %s" %(scrip_csv, e.message)
+        return
 
     scrip = scrip_csv.replace("csvfiles/", "").replace(".csv", "")
 

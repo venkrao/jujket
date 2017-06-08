@@ -6,6 +6,7 @@ import requests
 import re
 import argparse
 import datetime
+import pandas as pd
 
 class Nse:
     def __init__(self, url=None, params=None, headers=None):
@@ -58,6 +59,19 @@ class Nse:
             fh.write(all_scrips.get_response_text())
 
         return all_scrips_csv
+
+    @staticmethod
+    def already_downloaded(scrip_csv=None):
+        try:
+            today = datetime.datetime.now().strftime("%d-%b-%Y")
+            scrip_dataframe = pd.read_csv(scrip_csv)
+            scrip = os.path.basename(scrip_csv.replace("csvfiles/", "").replace(".csv", ""))
+            if today in scrip_dataframe.Date.values:
+                return True
+            return False
+        except Exception as e:
+            print "Failure for %s: %s" %(scrip_csv, e.message)
+            return False
 
     @staticmethod
     def bootstrap_history(history_range=None, scrip=None, scrip_csv=None):
@@ -178,11 +192,14 @@ if __name__ == "__main__":
             for line in all_scrips:
                 scrip = line.split(",")[0]
 
-                if scrip == "SYMoOL":
+                if scrip == "SYMBOL":
                     continue
 
                 print "working on %s" % scrip
                 scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, scrip))
+                if Nse.already_downloaded(scrip_csv=scrip_csv):
+                   print "%s already downloaded for this day." %scrip
+                   continue
                 symbol_count = str(Nse.get_symbol_count(scrip))
 
                 get_params = {'symbol': scrip, 'segmentLink': 3,
