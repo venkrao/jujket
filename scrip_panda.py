@@ -136,6 +136,57 @@ def yoy_metrics(scrip_csv=None, output_csv=None):
         fh_output_csv.write("%s," %increase_decrease_pct)
         fh_output_csv.write("\n")
 
+def mom_metrics(scrip_csv=None, output_csv=None):
+    # Along with the month on month price change, I need a ratio/percentage of
+    # times during which the price increased.
+    # i.e during a 1 year period, if the close price on 7 months was greater than
+    # opening price,
+    # then, the increase_decrease_pct value will be: 70%
+
+    count_increased = 0
+    count_total = 0
+
+    try:
+        input_dataframe = pd.read_csv(scrip_csv)
+    except Exception as e:
+        print "Failed to read csv file %s: %s" %(scrip_csv, e.message)
+        return
+
+    scrip = scrip_csv.replace("csvfiles/", "").replace(".csv", "")
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ]
+    with open(output_csv, "a") as fh_output_csv:
+        fh_output_csv.write("%s," %scrip)
+        for year in range(2007, datetime.datetime.now().year+1):
+            for month in months:
+                pattern = "%s-%s" %(month, year)
+                subset_dataframe, notnull = subset_dataframe_pattern(input_dataframe=input_dataframe, pattern=pattern)
+                # for this year, and month, the company was trading.
+                if notnull:
+                    try:
+                        mom_pct_change = get_pct_change(subset_dataframe)
+                    except Exception as e:
+                        print "Failed to calculate yoy pct change, %s, %s: %s" %(scrip, year, e.message)
+                        fh_output_csv.write("UNKNOWN,")
+                        continue
+                    # alles gut. write pct change into the csv.
+                    fh_output_csv.write("%s," %mom_pct_change)
+                    print "%s: total traded days in year %s, month %s: %s" %(scrip, year, month, len(subset_dataframe))
+                    count_total += 1
+                    if mom_pct_change > 0:
+                        count_increased += 1
+                else:
+                    print "%s: total traded days in year: %s 0" % (scrip, year)
+                    fh_output_csv.write("WAS_NOT_TRADING,")
+        increase_decrease_pct = 0
+        # write the increase_decrease_pct now.
+        if count_increased > 0:
+            increase_decrease_pct = 100 * (float(count_increased)/float(count_total))
+
+        print increase_decrease_pct
+        fh_output_csv.write("%s," %increase_decrease_pct)
+        fh_output_csv.write("\n")
+
+
 if __name__ == "__main__":
     if not os.path.isdir("result_csv"):
         my_mkdir("result_csv")
@@ -155,13 +206,17 @@ if __name__ == "__main__":
     parser.add_argument("--yoy_price_metric", action="store_true",
                         help="Get the year on year price change for all scrips")
 
+    parser.add_argument("--mom_price_metric", action="store_true",
+                        help="Get the month on month price change for all scrips")
+
     parser.add_argument("--scrip", dest="scrip", required=False, default=None,
                         help="Limit whatever the action to just this scrip")
 
 
     args = parser.parse_args()
     if not args.penny_stocks and not args.price_decreased_by and \
-            not args.price_increased_by and not args.yoy_price_metric:
+            not args.price_increased_by and not args.yoy_price_metric \
+            and not args.mom_price_metric:
         parser.print_help()
         sys.exit(0)
 
@@ -230,3 +285,32 @@ if __name__ == "__main__":
                 yoy_metrics(scrip_csv=scrip_csv, output_csv=output_csv)
 
         print "Yoy metrics in file: %s" %(output_csv)
+
+
+    if args.mom_price_metric:
+        """
+        Price change month on month.
+        """
+        print "Month on month price change metrics"
+        if args.scrip:
+            output_csv = "mom_metrics_%s.csv" % (args.scrip)
+        else:
+            output_csv = "mom_metrics_ALL.csv"
+
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        with open(output_csv, "w") as fh:
+            fh.write("Scrip, ")
+            for year in range(2007, datetime.datetime.now().year + 1):
+                for month in months:
+                    fh.write("%s-%s," %(month, year))
+
+            fh.write("increase_decrease_pct")
+            fh.write("\n")
+
+        if args.scrip:
+            mom_metrics(scrip_csv="csvfiles/%s.csv" %args.scrip, output_csv=output_csv)
+        else:
+            for scrip_csv in glob.glob("csvfiles/*.csv*"):
+                mom_metrics(scrip_csv=scrip_csv, output_csv=output_csv)
+
+        print "month on month metrics in file: %s" %(output_csv)
