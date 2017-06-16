@@ -132,8 +132,14 @@ def yoy_metrics(scrip_csv=None, output_csv=None):
         if count_increased > 0:
             increase_decrease_pct = 100 * (float(count_increased)/float(count_total))
 
-        print increase_decrease_pct
+        try:
+            closing_price = input_dataframe["Close Price"].iloc[-1]
+        except Exception as e:
+            print "Couldn't get closing price."
+            closing_price = "UNKNOWN"
+
         fh_output_csv.write("%s," %increase_decrease_pct)
+        fh_output_csv.write("%s," %closing_price)
         fh_output_csv.write("\n")
 
 def mom_metrics(scrip_csv=None, output_csv=None):
@@ -182,8 +188,13 @@ def mom_metrics(scrip_csv=None, output_csv=None):
         if count_increased > 0:
             increase_decrease_pct = 100 * (float(count_increased)/float(count_total))
 
-        print increase_decrease_pct
+        try:
+            closing_price = input_dataframe["Close Price"].iloc[-1]
+        except Exception as e:
+            print "Couldn't get closing price."
+            closing_price = "UNKNOWN"
         fh_output_csv.write("%s," %increase_decrease_pct)
+        fh_output_csv.write("%s," % closing_price)
         fh_output_csv.write("\n")
 
 
@@ -275,7 +286,8 @@ if __name__ == "__main__":
             for year in range(2007, datetime.datetime.now().year + 1):
                 fh.write("%s," %year)
 
-            fh.write("increase_decrease_pct")
+            fh.write("increase_decrease_pct,")
+            fh.write("current_price,")
             fh.write("\n")
 
         if args.scrip:
@@ -304,7 +316,8 @@ if __name__ == "__main__":
                 for month in months:
                     fh.write("%s-%s," %(month, year))
 
-            fh.write("increase_decrease_pct")
+            fh.write("increase_decrease_pct,")
+            fh.write("current_price,")
             fh.write("\n")
 
         if args.scrip:
