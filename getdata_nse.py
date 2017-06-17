@@ -178,9 +178,12 @@ if __name__ == "__main__":
             print "Historic data only for ALL scrips"
             with open(all_scrips_csv, "r") as all_scrips:
                 for line in all_scrips:
-                    scrip = line.split(",")[0]
+                    fields = line.split(",")
+                    scrip = fields[0]
 
-                    if scrip == "SYMBOL":
+                    if scrip == "SYMBOL" or fields[1] != "EQ":
+                        # We don't want the first row.
+                        # We do not want anything other than EQuity.
                         continue
                     scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, scrip))
                     Nse.bootstrap_history(history_range={"start": args.year_start, "end": args.year_end},
@@ -190,9 +193,12 @@ if __name__ == "__main__":
         print "Fetching daily data.."
         with open(all_scrips_csv, "r") as all_scrips:
             for line in all_scrips:
-                scrip = line.split(",")[0]
+                fields = line.split(",")
+                scrip = fields[0]
 
-                if scrip == "SYMBOL":
+                if scrip == "SYMBOL" or fields[1] != "EQ":
+                    # We don't want the first row.
+                    # We do not want anything other than EQuity.
                     continue
 
                 print "working on %s" % scrip

@@ -10,6 +10,7 @@ import sys, os, glob
 import datetime
 import argparse
 import argparse
+from getdata_nse import Nse
 
 def price_increased(dataframe, percentage_change, output_csv, change_type):
     pass
@@ -62,7 +63,8 @@ def penny_stocks(value):
     print "Penny stocks: Max price: %s" %value
     penny_csv = "penny_lessthan_%s_as_on_%s.csv" %(value, datetime.datetime.today().strftime('%m-%d-%Y'))
     with open(penny_csv, "w") as fh_penny_csv:
-        for scrip_csv in glob.glob("csvfiles/*.csv*"):
+        for scrip in get_equity_only_scrips():
+            scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, scrip))
             try:
                 scrip_dataframe = pd.read_csv(scrip_csv)
                 # print scrip_dataframe["Series"].loc("EQ")
@@ -197,6 +199,17 @@ def mom_metrics(scrip_csv=None, output_csv=None):
         fh_output_csv.write("%s," % closing_price)
         fh_output_csv.write("\n")
 
+def get_equity_only_scrips():
+    all_scrips_csv = "all_scrips.csv"
+    if not os.path.isfile("all_scrips.csv"):
+        # download it if it is deleted.
+        print "Download %s" %all_scrips_csv
+        all_scrips_csv = Nse.get_all_scrips()
+
+    df = pd.read_csv(all_scrips_csv)
+    eq_only = df[df[' SERIES'] == " EQ"]['SYMBOL']
+    return eq_only
+
 
 if __name__ == "__main__":
     if not os.path.isdir("result_csv"):
@@ -225,6 +238,7 @@ if __name__ == "__main__":
 
 
     args = parser.parse_args()
+    dir_for_csv = "csvfiles"
     if not args.penny_stocks and not args.price_decreased_by and \
             not args.price_increased_by and not args.yoy_price_metric \
             and not args.mom_price_metric:
@@ -244,7 +258,8 @@ if __name__ == "__main__":
         if os.path.isfile(output_csv):
             os.remove(output_csv)
 
-        for scrip_csv in glob.glob("csvfiles/*.csv*"):
+        for scrip in get_equity_only_scrips():
+            scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, scrip))
             price_change_metrics(scrip_csv=scrip_csv, by="%s" %args.price_decreased_by, duration=args.duration,
                             output_csv=output_csv, change_type="decreased")
 
@@ -257,7 +272,8 @@ if __name__ == "__main__":
         if os.path.isfile(output_csv):
             os.remove(output_csv)
 
-        for scrip_csv in glob.glob("csvfiles/*.csv*"):
+        for scrip in get_equity_only_scrips():
+            scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, scrip))
             price_change_metrics(scrip_csv=scrip_csv, by="%s" %args.price_increased_by, duration=args.duration,
                             output_csv=output_csv, change_type="increased")
 
@@ -293,7 +309,8 @@ if __name__ == "__main__":
         if args.scrip:
             yoy_metrics(scrip_csv="csvfiles/%s.csv" %args.scrip, output_csv=output_csv)
         else:
-            for scrip_csv in glob.glob("csvfiles/*.csv*"):
+            for scrip in get_equity_only_scrips():
+                scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, scrip))
                 yoy_metrics(scrip_csv=scrip_csv, output_csv=output_csv)
 
         print "Yoy metrics in file: %s" %(output_csv)
@@ -323,7 +340,8 @@ if __name__ == "__main__":
         if args.scrip:
             mom_metrics(scrip_csv="csvfiles/%s.csv" %args.scrip, output_csv=output_csv)
         else:
-            for scrip_csv in glob.glob("csvfiles/*.csv*"):
+            for scrip in get_equity_only_scrips():
+                scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, scrip))
                 mom_metrics(scrip_csv=scrip_csv, output_csv=output_csv)
 
         print "month on month metrics in file: %s" %(output_csv)
