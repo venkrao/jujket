@@ -151,9 +151,10 @@ def mom_metrics(scrip_csv=None, output_csv=None):
     # opening price,
     # then, the increase_decrease_pct value will be: 70%
 
+    # Sum of pct_change on each month is what is performance_index to me.
     count_increased = 0
     count_total = 0
-
+    performance_index = 0
     try:
         input_dataframe = pd.read_csv(scrip_csv)
     except Exception as e:
@@ -178,6 +179,7 @@ def mom_metrics(scrip_csv=None, output_csv=None):
                         continue
                     # alles gut. write pct change into the csv.
                     fh_output_csv.write("%s," %mom_pct_change)
+                    performance_index += mom_pct_change
                     print "%s: total traded days in year %s, month %s: %s" %(scrip, year, month, len(subset_dataframe))
                     count_total += 1
                     if mom_pct_change > 0:
@@ -196,6 +198,7 @@ def mom_metrics(scrip_csv=None, output_csv=None):
             print "Couldn't get closing price."
             closing_price = "UNKNOWN"
         fh_output_csv.write("%s," %increase_decrease_pct)
+        fh_output_csv.write("%s," %performance_index)
         fh_output_csv.write("%s," % closing_price)
         fh_output_csv.write("\n")
 
@@ -303,6 +306,7 @@ if __name__ == "__main__":
                 fh.write("%s," %year)
 
             fh.write("increase_decrease_pct,")
+            fh.write("performance_index,")
             fh.write("current_price,")
             fh.write("\n")
 
@@ -334,6 +338,7 @@ if __name__ == "__main__":
                     fh.write("%s-%s," %(month, year))
 
             fh.write("increase_decrease_pct,")
+            fh.write("performance_index,")
             fh.write("current_price,")
             fh.write("\n")
 

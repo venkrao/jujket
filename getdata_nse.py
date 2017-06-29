@@ -133,6 +133,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process various inputs to fetch data from NSE for various scrips.')
     parser.add_argument('--bootstrap', action="store_true", help="Bootstraps stocks data since 2007")
     parser.add_argument('--daily_data', action="store_true", help="Fetch daily data for all scrips")
+    parser.add_argument('--from_date', dest="from_date", required=False, help="Specify the date from which the data"
+                                                                    "should be fetched.")
+    parser.add_argument('--to_date', dest="to_date", required=False, help="Specify the date to which the data"
+                                                                         "should be fetched.")
     parser.add_argument('--year_start', dest='year_start', default=2007,
                         help="Bootstraps stocks data since this year. Default, 2007")
     parser.add_argument('--year_end', dest='year_end', action="store", default=datetime.datetime.now().year,
@@ -147,6 +151,10 @@ if __name__ == "__main__":
     if not args.daily_data and not args.bootstrap:
         parser.print_help()
         sys.exit(0)
+
+    if args.from_date and not args.to_date:
+        # if to_date is not provided, assume from_date as the to_date too.
+        args.to_date = args.from_date
 
     """
     'symbol=EICHERMOT&segmentLink=3&symbolCount=1&series=ALL&dateRange=+&fromDate=01-01-2009&toDate=31-12-2009&dataType=PRICEVOLUMEDELIVERABLE'
@@ -181,7 +189,7 @@ if __name__ == "__main__":
                     fields = line.split(",")
                     scrip = fields[0]
 
-                    if scrip == "SYMBOL" or fields[1] != "EQ":
+                    if scrip == "SYMBOL" or fields[1] != " EQ":
                         # We don't want the first row.
                         # We do not want anything other than EQuity.
                         continue
@@ -195,8 +203,8 @@ if __name__ == "__main__":
             for line in all_scrips:
                 fields = line.split(",")
                 scrip = fields[0]
-
-                if scrip == "SYMBOL" or fields[1] != "EQ":
+               
+                if scrip == "SYMBOL" or fields[1] != " EQ":
                     # We don't want the first row.
                     # We do not want anything other than EQuity.
                     continue
@@ -208,10 +216,16 @@ if __name__ == "__main__":
                    continue
                 symbol_count = str(Nse.get_symbol_count(scrip))
 
-                get_params = {'symbol': scrip, 'segmentLink': 3,
-                              'series': 'EQ', 'fromDate': "", 'toDate': "",
+                if args.from_date and args.to_date:
+                    get_params = {'symbol': scrip, 'segmentLink': 3,
+                              'series': 'EQ', 'fromDate': args.from_date, 'toDate': args.to_date,
                               'dataType': 'PRICEVOLUMEDELIVERABLE', "symbolCount": symbol_count,
-                              'dateRange': "day"}
+                              'dateRange': ""}
+                else:
+                    get_params = {'symbol': scrip, 'segmentLink': 3,
+                                  'series': 'EQ', 'fromDate': "", 'toDate': "",
+                                  'dataType': 'PRICEVOLUMEDELIVERABLE', "symbolCount": symbol_count,
+                                  'dateRange': "day"}
                 try :
                     csv_data = Nse.query_nse(get_params)
                     update_csv(scrip_csv, csv_data)
