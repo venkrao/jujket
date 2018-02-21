@@ -70,7 +70,7 @@ class Nse:
                 return True
             return False
         except Exception as e:
-            print "Failure for %s: %s" %(scrip_csv, e.message)
+            print ("Failure for %s: %s") %(scrip_csv, e.message)
             return False
 
     @staticmethod
@@ -134,9 +134,9 @@ if __name__ == "__main__":
     parser.add_argument('--bootstrap', action="store_true", help="Bootstraps stocks data since 2007")
     parser.add_argument('--daily_data', action="store_true", help="Fetch daily data for all scrips")
     parser.add_argument('--from_date', dest="from_date", required=False, help="Specify the date from which the data"
-                                                                    "should be fetched.")
+                                                                    "should be fetched. dd-mm-yyyy")
     parser.add_argument('--to_date', dest="to_date", required=False, help="Specify the date to which the data"
-                                                                         "should be fetched.")
+                                                                         "should be fetched dd-mm-yyyy.")
     parser.add_argument('--year_start', dest='year_start', default=2007,
                         help="Bootstraps stocks data since this year. Default, 2007")
     parser.add_argument('--year_end', dest='year_end', action="store", default=datetime.datetime.now().year,

@@ -21,6 +21,7 @@ def price_change_metrics(scrip_csv=None, by=None, change_type=None, duration=Non
     with open(output_csv, "a") as watchout:
         try:
             scrip_dataframe = pd.read_csv(scrip_csv)
+            scrip_name = os.path.basename(scrip_csv).split(".")[0]
             # print scrip_dataframe["Series"].loc("EQ")
             duration = int(duration)
             scrip_dataframe_for_duration = scrip_dataframe.iloc[-duration:]
@@ -30,14 +31,15 @@ def price_change_metrics(scrip_csv=None, by=None, change_type=None, duration=Non
             if change_type == "decreased":
                 if  pct_change < -int(by):
                     print "%s : WATCH OUT" % scrip_csv
-                    watchout.write("%s, %s\n" %(scrip_csv.split("/")[1].split(".")[0], pct_change))
+                    print
+                    watchout.write("%s, %s\n" %(scrip_name, pct_change))
                 else:
                     print "%s hasn't changed to less than %s" %(scrip_csv, by)
-
+            
             if change_type == "increased":
                 if pct_change > int(by):
                     print "%s : WATCH OUT" % scrip_csv
-                    watchout.write("%s, %s\n" % (scrip_csv.split("/")[1].split(".")[0], pct_change))
+                    watchout.write("%s, %s\n" % (scrip_name, pct_change))
                 else:
                     print "%s hasn't changed to less than %s" % (scrip_csv, by)
             print "================="
@@ -53,6 +55,15 @@ def get_pct_change(scrip_dataframe):
     scrip_dataframe[["Date", "Series", "avg_change", "Close Price"]]["avg_change"][scrip_dataframe.index[-1]]
     return pct_change
 
+def moving_average(scrip_csv=None, output_csv=None):
+    print "Finding moving average on %s" %scrip_csv
+    scrip_dataframe = pd.read_csv(scrip_csv)
+    with open(output_csv, "w") as fh_output_csv:
+        #scrip_dataframe["moving_average"] = scrip_dataframe["Close Price"].rolling(2).mean()
+        scrip_dataframe["moving_average"] = scrip_dataframe["Close Price"].expanding(min_periods=1).mean()
+        scrip_dataframe.to_csv(fh_output_csv)
+
+    print "Written to: %s" %output_csv
 def my_mkdir(path):
     if not os.path.isdir(path):
         os.mkdir(path)
@@ -67,6 +78,7 @@ def penny_stocks(value):
             scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, scrip))
             try:
                 scrip_dataframe = pd.read_csv(scrip_csv)
+                scrip_name = os.path.basename(scrip_csv).split(".")[0]
                 # print scrip_dataframe["Series"].loc("EQ")
 
                 # print scrip_dataframe.query(scrip_dataframe.Series == "EQ")
@@ -74,7 +86,7 @@ def penny_stocks(value):
 
                 if price_now < value:
                     print "Penny stock: %s"  %(scrip_csv)
-                    fh_penny_csv.write("%s, %s\n" %(scrip_csv.split("/")[1].split(".")[0], price_now))
+                    fh_penny_csv.write("%s, %s\n" %(scrip_name, price_now))
                     print "================="
             except Exception as e:
                 print "%s is broken: %s" % (scrip_csv, e.message)
@@ -215,8 +227,9 @@ def get_equity_only_scrips():
 
 
 if __name__ == "__main__":
-    if not os.path.isdir("result_csv"):
-        my_mkdir("result_csv")
+    result_csv = "result_csv"
+    if not os.path.isdir(result_csv):
+        my_mkdir(result_csv)
 
     parser = argparse.ArgumentParser(description='Run analysis on various scrips.')
     parser.add_argument('--penny_stocks', action="store_true", help="Collect stocks with nomnal price")
@@ -239,12 +252,14 @@ if __name__ == "__main__":
     parser.add_argument("--scrip", dest="scrip", required=False, default=None,
                         help="Limit whatever the action to just this scrip")
 
+    parser.add_argument("--moving_average", dest="moving_avg", action="store_true",
+                        help="Write out a new column with moving average for price.")
 
     args = parser.parse_args()
     dir_for_csv = "csvfiles"
     if not args.penny_stocks and not args.price_decreased_by and \
             not args.price_increased_by and not args.yoy_price_metric \
-            and not args.mom_price_metric:
+            and not args.mom_price_metric and not args.moving_avg:
         parser.print_help()
         sys.exit(0)
 
@@ -253,6 +268,18 @@ if __name__ == "__main__":
             print "--penny_stock_price required."
             sys.exit()
         penny_stocks(args.penny_stock_price)
+
+    if args.moving_avg:
+        if args.scrip:
+            all_scrips = [args.scrip]
+        else:
+            all_scrips = get_equity_only_scrips()
+
+        for scrip in all_scrips:
+            scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, scrip))
+            script_csv_moving_avg = ("%s%s%s.csv" % (result_csv, os.path.sep, scrip))
+            moving_average(scrip_csv=scrip_csv, output_csv=script_csv_moving_avg)
+        sys.exit(0)
 
     if args.price_decreased_by:
         output_csv = "decreasedby_%s_pct_as_on_%s.csv" %(args.price_decreased_by,
