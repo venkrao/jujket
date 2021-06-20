@@ -58,13 +58,38 @@ def get_pct_change(scrip_dataframe):
 def moving_average(scrip_csv=None, output_csv=None):
     print "Finding moving average on %s" %scrip_csv
     scrip_dataframe = pd.read_csv(scrip_csv)
+    output_dataframe = pd.DataFrame()
     with open(output_csv, "w") as fh_output_csv:
         #scrip_dataframe["moving_average"] = scrip_dataframe["Close Price"].rolling(2).mean()
-        scrip_dataframe["moving_average"] = scrip_dataframe["Close Price"].expanding(min_periods=1).mean()
-        scrip_dataframe.to_csv(fh_output_csv)
+        output_dataframe["moving_average"] = scrip_dataframe["Close Price"].expanding(min_periods=1).mean()
+        output_dataframe.to_csv(fh_output_csv)
 
     print "Written to: %s" %output_csv
+
+def moving_average_trend(scrip=None, scrip_csv_moving_avg=None, moving_average_trend_csv=None):
+    print "Calculating moving average trend. %s" %scrip
+    scrip_dataframe = pd.read_csv(scrip_csv_moving_avg)
+    upward_trend = 0
+    downward_trend = 0
+    with open(moving_average_trend_csv, "a") as fh_moving_avg_trend:
+        moving_average = scrip_dataframe["moving_average"]
+        trade_day_count = len(moving_average)
+        for avg in range(0, trade_day_count - 1):
+            if moving_average[avg] > moving_average[avg+1]:
+                upward_trend += 1
+            elif moving_average[avg] < moving_average[avg+1]:
+                downward_trend += 1
+
+        if upward_trend > downward_trend:
+            average = 100 * float(upward_trend) / float(trade_day_count)
+        elif upward_trend < downward_trend:
+            average = (100 * float(downward_trend) / float(trade_day_count)) - 100
+
+        fh_moving_avg_trend.write("%s, %f\n" %(scrip, average))
+
+
 def my_mkdir(path):
+
     if not os.path.isdir(path):
         os.mkdir(path)
 
@@ -84,8 +109,8 @@ def penny_stocks(value):
                 # print scrip_dataframe.query(scrip_dataframe.Series == "EQ")
                 price_now = scrip_dataframe["Close Price"].iloc[-1]
 
-                if price_now < value:
-                    print "Penny stock: %s"  %(scrip_csv)
+                if int(price_now) < int(value):
+                    print "Penny stock: {} - price now = {} is less than {}".format(scrip_csv, price_now, value)
                     fh_penny_csv.write("%s, %s\n" %(scrip_name, price_now))
                     print "================="
             except Exception as e:
@@ -270,6 +295,10 @@ if __name__ == "__main__":
         penny_stocks(args.penny_stock_price)
 
     if args.moving_avg:
+        moving_average_trend_csv = ("%s%sMovingAverageTrend.csv" % (result_csv, os.path.sep))
+        if os.path.isfile(moving_average_trend_csv):
+            os.remove(moving_average_trend_csv)
+
         if args.scrip:
             all_scrips = [args.scrip]
         else:
@@ -277,8 +306,11 @@ if __name__ == "__main__":
 
         for scrip in all_scrips:
             scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, scrip))
-            script_csv_moving_avg = ("%s%s%s.csv" % (result_csv, os.path.sep, scrip))
-            moving_average(scrip_csv=scrip_csv, output_csv=script_csv_moving_avg)
+            scrip_csv_moving_avg = ("%s%s%s.csv" % (result_csv, os.path.sep, scrip))
+            moving_average(scrip_csv=scrip_csv, output_csv=scrip_csv_moving_avg)
+            moving_average_trend(scrip=scrip, scrip_csv_moving_avg=scrip_csv_moving_avg, moving_average_trend_csv=moving_average_trend_csv)
+
+        print "Moving average trend summary: %s" %moving_average_trend_csv
         sys.exit(0)
 
     if args.price_decreased_by:
@@ -353,9 +385,9 @@ if __name__ == "__main__":
         """
         print "Month on month price change metrics"
         if args.scrip:
-            output_csv = "mom_metrics_%s.csv" % (args.scrip)
+            output_csv = "mom_metrics_%s_%s.csv" % (args.scrip, datetime.datetime.today().strftime('%m-%d-%Y'))
         else:
-            output_csv = "mom_metrics_ALL.csv"
+            output_csv = "mom_metrics_ALL_%s.csv" %(datetime.datetime.today().strftime('%m-%d-%Y'))
 
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         with open(output_csv, "w") as fh:

@@ -56,7 +56,7 @@ class Nse:
         # all details of all the scrips
         all_scrips = Nse(url="https://www.nseindia.com/products/content/sec_bhavdata_full.csv")
         with open(all_scrips_csv, "w") as fh:
-            fh.write(all_scrips.get_response_text())
+            fh.write(all_scrips.get_response_text().decode("utf-8"))
 
         return all_scrips_csv
 
@@ -142,6 +142,7 @@ if __name__ == "__main__":
     parser.add_argument('--year_end', dest='year_end', action="store", default=datetime.datetime.now().year,
                         help="Bootstraps stocks data until this year. Default, current year.")
 
+						
     parser.add_argument("--scrip", dest="scrip", required=False, default=None,
                         help="Limit whatever the action to just this scrip")
 
@@ -156,6 +157,13 @@ if __name__ == "__main__":
         # if to_date is not provided, assume from_date as the to_date too.
         args.to_date = args.from_date
 
+
+    blacklist = []
+    if os.path.isfile("blacklist.txt"):
+        with open("blacklist.txt") as fh:
+            for line in fh:
+                 blacklist.append(line.rstrip())
+    
     """
     'symbol=EICHERMOT&segmentLink=3&symbolCount=1&series=ALL&dateRange=+&fromDate=01-01-2009&toDate=31-12-2009&dataType=PRICEVOLUMEDELIVERABLE'
 
@@ -189,6 +197,10 @@ if __name__ == "__main__":
                     fields = line.split(",")
                     scrip = fields[0]
 
+                    if scrip in blacklist:
+                        print "{} is a blacklisted script. skipping.".format(scrip)
+                        continue
+					
                     if scrip == "SYMBOL" or fields[1] != " EQ":
                         # We don't want the first row.
                         # We do not want anything other than EQuity.
@@ -204,11 +216,12 @@ if __name__ == "__main__":
                 fields = line.split(",")
                 scrip = fields[0]
                
-                if scrip == "SYMBOL" or fields[1] != " EQ":
+                #if scrip == "SYMBOL" or fields[1] != " EQ":
                     # We don't want the first row.
                     # We do not want anything other than EQuity.
-                    continue
-
+                #    continue
+                print(line)
+                continue
                 print "working on %s" % scrip
                 scrip_csv = ("%s%s%s.csv" % (dir_for_csv, os.path.sep, scrip))
                 if Nse.already_downloaded(scrip_csv=scrip_csv):
